@@ -2,6 +2,7 @@ package puggy
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -28,10 +29,26 @@ func NewRouter(domains []string) *Router {
 	return &Router{Domains: domains}
 }
 
-// AddRoute adds a new route to the router
 func (router *Router) AddRoute(method string, path string, handler http.HandlerFunc) {
-	route := Route{method, regexp.MustCompile(path), handler}
+	var regexPattern string
+	if path == "/" {
+		regexPattern = "^/$"
+	} else {
+		regexPattern = createRegexPattern(path)
+	}
+	route := Route{Method: method, Path: regexp.MustCompile(regexPattern), Handler: http.HandlerFunc(handler)}
+
 	router.Routes = append(router.Routes, route)
+}
+
+func createRegexPattern(path string) string {
+	re := regexp.MustCompile(`{(\w+)}`)
+	escapedPath := regexp.QuoteMeta(path)
+	regexPattern := re.ReplaceAllStringFunc(escapedPath, func(m string) string {
+		variableName := re.FindStringSubmatch(m)[1]
+		return fmt.Sprintf(`(?P<%s>[^/]+)`, variableName)
+	})
+	return fmt.Sprintf("^%s$", regexPattern)
 }
 
 // ServeHTTP matches the methods and paths with the right handler

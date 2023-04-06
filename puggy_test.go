@@ -58,6 +58,12 @@ func TestAddRoute(t *testing.T) {
 		t.Errorf("AddRoute() returned wrong status code: got %d, want %d", res.StatusCode, http.StatusOK)
 	}
 
+	// add a new route to the router with the new path format
+	router.AddRoute("GET", "/books/{id}", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Book " + req.Context().Value(pathVarName("id")).(string)))
+	})
+
 	// check for errors in resp body
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -81,8 +87,13 @@ func TestServeHTTP(t *testing.T) {
 
 	// add some routes to the router
 	// get
-	router.AddRoute("GET", "^/$", func(w http.ResponseWriter, req *http.Request) {
+	router.AddRoute("GET", "/", func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("Hello, world!"))
+	})
+
+	// add a new route with the new path format
+	router.AddRoute("GET", "/books/{id}", func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("Book " + req.Context().Value(pathVarName("id")).(string)))
 	})
 
 	// post
@@ -102,8 +113,32 @@ func TestServeHTTP(t *testing.T) {
 		t.Fatalf("http.NewRequest() failed: %v", err)
 	}
 
-	// use the response recorder for testing
+	// test a GET request to /books/1
+	req, err = http.NewRequest("GET", "/books/1", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest() failed: %v", err)
+	}
+
 	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Body.String() != "Book 1" {
+		t.Errorf("ServeHTTP() failed to handle GET request to /books/{id}: got %q, want %q", w.Body.String(), "Book 1")
+	}
+
+	// test a GET request to /books
+	req, err = http.NewRequest("GET", "/books", nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest() failed: %v", err)
+	}
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("ServeHTTP() failed to return 404 Not Found for /books: got %d, want %d", w.Code, http.StatusNotFound)
+	}
+
+	// use the response recorder for testing
+	w = httptest.NewRecorder()
 
 	// serve the test server
 	router.ServeHTTP(w, req)
