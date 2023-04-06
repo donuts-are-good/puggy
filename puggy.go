@@ -41,8 +41,18 @@ func (router *Router) AddRoute(method string, path string, handler http.HandlerF
 	router.Routes = append(router.Routes, route)
 }
 
+// func createRegexPattern(path string) string {
+// 	re := regexp.MustCompile(`{(\w+)}`)
+// 	escapedPath := regexp.QuoteMeta(path)
+// 	regexPattern := re.ReplaceAllStringFunc(escapedPath, func(m string) string {
+// 		variableName := re.FindStringSubmatch(m)[1]
+// 		return fmt.Sprintf(`(?P<%s>[^/]+)`, variableName)
+// 	})
+// 	return fmt.Sprintf("^%s$", regexPattern)
+// }
+
 func createRegexPattern(path string) string {
-	re := regexp.MustCompile(`{(\w+)}`)
+	re := regexp.MustCompile(`/{([^/]+)}`)
 	escapedPath := regexp.QuoteMeta(path)
 	regexPattern := re.ReplaceAllStringFunc(escapedPath, func(m string) string {
 		variableName := re.FindStringSubmatch(m)[1]
